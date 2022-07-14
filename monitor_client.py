@@ -1,14 +1,25 @@
 from citizenshell.secureshell import SecureShell
+import threading
+import time
+import psutil
+import subprocess
 
-local_exec_file_path = r'C:\python\project\scan_ap\main.py'
+local_exec_file_path = 'main.py'
 remote_exec_file_path = '/tmp/main.py'
 
+remote_store_file_path = '/tmp/packet_capture.pcapng'
+local_store_file_path = '1.pcapng'
+
 class MonClient:
+    search_dirs = ['Program Files', 'Program Files (x86)']
+    sniff_program_name = 'Wireshark.exe'
 
     def __init__(self, ip_address, username, password):
         self.s_ip_address = ip_address
         self.s_username = username
         self.s_password = password
+        self.sniff_program_path = ''
+        self.locate_capture_program()
 
     def push_file(self, local_path, remote_path):
         self.shell.push(local_path, remote_path)
@@ -54,9 +65,34 @@ class MonClient:
         output = self.get_pid(process_name)
         pid = str(output)
         print('pid', pid)
-        cmd = r'echo -e "{}\n" | sudo -S kill -2 {}'.format(self.s_password, pid)
-        print('cmd', cmd)
+        if pid:
+            cmd = r'echo -e "{}\n" | sudo -S kill -2 {}'.format(self.s_password, pid)
+            print('cmd', cmd)
+            return self.exec_command(cmd)
+
+    def test_cmd(self, cmd):
         return self.exec_command(cmd)
+
+    def locate_capture_program(self):
+        self.check_wireshark_th = threading.Thread(target=self.search_sniff_program,
+            args=(self.search_dirs,))
+        self.check_wireshark_th.start()
+
+    def search_sniff_program(self, dirs):
+        for disk in psutil.disk_partitions():
+            for dir in dirs:
+                search_path = disk[0] + dir
+                search_cmd = 'where /R "{}" {}'.format(search_path, self.sniff_program_name)
+                print('search cmd:', search_cmd)
+                proc = subprocess.run(search_cmd, capture_output=True)
+                if proc.returncode == 0:
+                    self.sniff_program_path = proc.stdout.decode().strip()
+                    return
+
+    def open_sniff_program(self, captured_file=''):
+        cmd = self.sniff_program_path + ' ' + captured_file
+        print('cmd', cmd)
+        subprocess.Popen(cmd)
 
 if __name__ == '__main__':
     print('mark 0')
@@ -72,5 +108,5 @@ if __name__ == '__main__':
     print('mark 3')
 #    output = mon_client.start_scan()
 #    print(output)
-    mon_client.stop_scan()
-    mon_client.disconnect_to_server()
+#    mon_client.stop_scan()
+#    mon_client.disconnect_to_server()
