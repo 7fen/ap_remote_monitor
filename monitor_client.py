@@ -4,7 +4,7 @@ import time
 import psutil
 import subprocess
 
-local_exec_file_path = 'main.py'
+local_exec_file_path = 'remote_main.py'
 remote_exec_file_path = '/tmp/main.py'
 
 remote_store_file_path = '/tmp/packet_capture.pcapng'
@@ -93,6 +93,9 @@ class MonClient:
         cmd = self.sniff_program_path + ' ' + captured_file
         print('cmd', cmd)
         subprocess.Popen(cmd)
+    
+    def get_sniff_program_path(self):
+        return self.sniff_program_path
 
 if __name__ == '__main__':
     print('mark 0')
