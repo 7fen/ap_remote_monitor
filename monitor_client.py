@@ -8,7 +8,7 @@ local_exec_file_path = 'remote_main.py'
 remote_exec_file_path = '/tmp/main.py'
 
 remote_store_file_path = '/tmp/packet_capture.pcapng'
-local_store_file_path = '1.pcapng'
+local_store_file_path = 'monitor'
 
 class MonClient:
     search_dirs = ['Program Files', 'Program Files (x86)']
@@ -19,7 +19,7 @@ class MonClient:
         self.s_username = username
         self.s_password = password
         self.sniff_program_path = ''
-        self.locate_capture_program()
+#        self.locate_capture_program()
 
     def push_file(self, local_path, remote_path):
         self.shell.push(local_path, remote_path)
@@ -41,6 +41,11 @@ class MonClient:
     def disconnect_to_server(self):
         self.shell.disconnect()
     
+    def get_monitor_iface(self):
+        cmd = r'echo -e "{}\n" | sudo -S {} get_monitor_iface'.format(self.s_password,
+            remote_exec_file_path)
+        return self.exec_command(cmd)
+    
     def get_supported_channels(self):
         cmd = r'echo -e "{}\n" | sudo -S {} get_supported_channels'.format(self.s_password,
             remote_exec_file_path)
@@ -49,6 +54,7 @@ class MonClient:
     def set_mon_channel(self, chan):
         cmd = r'echo -e "{}\n" | sudo -S {} set_mon_channel {}'.format(self.s_password,
             remote_exec_file_path, str(chan))
+        self.mon_chan = chan
         return self.exec_command(cmd)
     
     def start_scan(self):
@@ -73,42 +79,46 @@ class MonClient:
     def test_cmd(self, cmd):
         return self.exec_command(cmd)
 
-    def locate_capture_program(self):
-        self.check_wireshark_th = threading.Thread(target=self.search_sniff_program,
-            args=(self.search_dirs,))
-        self.check_wireshark_th.start()
-
-    def search_sniff_program(self, dirs):
+    def search_sniffer_program(self):
         for disk in psutil.disk_partitions():
-            for dir in dirs:
+            for dir in self.search_dirs:
                 search_path = disk[0] + dir
                 search_cmd = 'where /R "{}" {}'.format(search_path, self.sniff_program_name)
                 print('search cmd:', search_cmd)
                 proc = subprocess.run(search_cmd, capture_output=True)
                 if proc.returncode == 0:
-                    self.sniff_program_path = proc.stdout.decode().strip()
+                    self.sniffer_program_path = proc.stdout.decode().strip()
                     return
 
-    def open_sniff_program(self, captured_file=''):
-        cmd = self.sniff_program_path + ' ' + captured_file
+    def open_sniffer_program(self):
+        cmd = self.sniffer_program_path + ' ' + self.full_captured_file_path
         print('cmd', cmd)
         subprocess.Popen(cmd)
     
-    def get_sniff_program_path(self):
-        return self.sniff_program_path
+    def get_sniffer_program_path(self):
+        return self.sniffer_program_path
+    
+    def push_function_file_to_server(self):
+        self.push_file(local_exec_file_path, remote_exec_file_path)
+    
+    def pull_captured_file_from_server(self):
+        self.full_captured_file_path = local_store_file_path + '_ch{}.pcapng'.format(self.mon_chan)
+        self.pull_file(self.full_captured_file_path, remote_store_file_path)
 
 if __name__ == '__main__':
     print('mark 0')
     mon_client = MonClient('192.168.0.200', 'here', 'xxxxxx')
     mon_client.connect_to_server()
-    mon_client.push_file(local_exec_file_path, remote_exec_file_path)
+    mon_client.push_function_file_to_server()
     print('mark 1')
-    output = mon_client.get_supported_channels()
-    print('mark 2')
+    output = mon_client.get_monitor_iface()
     print(str(output))
-    output = mon_client.set_mon_channel(36)
-    print(output)
-    print('mark 3')
+#    output = mon_client.get_supported_channels()
+#    print('mark 2')
+#    print(str(output))
+#    output = mon_client.set_mon_channel(36)
+#    print(output)
+#    print('mark 3')
 #    output = mon_client.start_scan()
 #    print(output)
 #    mon_client.stop_scan()

@@ -171,10 +171,16 @@ if __name__ == '__main__':
     channel_bandwidth = get_bandwidth_capability(phy)
     #for freq, band in channel_bandwidth.items():
     #    print('freq:{} band:{}'.format(freq, band)) 
-
-    if action == 'get_supported_channels':
+    if action == 'get_monitor_iface':
+        print(mon_iface)
+    elif action == 'get_supported_channels':
+        count = 1
+        char = ' '
         for channel in supported_channels:
-            print(channel, end=' ')
+            if count == len(supported_channels):
+                char = ''
+            count += 1
+            print(channel, end=char)
     elif action == 'set_mon_channel':
         try:
             channel = sys.argv[2]
