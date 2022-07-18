@@ -2,13 +2,14 @@ from multiprocessing.dummy import current_process
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 import monitor_client
-from work_thread import FindSnifferThread, SetupScanEnvThread, StartScanThread, PullCapturedFileThread
+from work_thread import FindSnifferThread, SetupScanEnvThread, StartScanThread, PullCapturedFileThread, CheckCapturedFileThread
 import ui.Ui_ap_remote_monitor
 import sys
 import os
 import time
 from datetime import datetime
 import subprocess
+import re
 
 class Logic(QtWidgets.QMainWindow):
     sniffer_program_path = ''
@@ -20,6 +21,7 @@ class Logic(QtWidgets.QMainWindow):
 
     #my logic
         self.setWindowFlags(QtCore.Qt.WindowCloseButtonHint)
+        self.ui.lineEdit_pw.setEchoMode(QtWidgets.QLineEdit.Password)
         self.ui.pushButton_disconn.setEnabled(False)
         self.ui.pushButton_scan.setEnabled(False)
         self.ui.pushButton_stop_scan.setEnabled(False)
@@ -30,6 +32,10 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_stop_scan.clicked.connect(self.stop_scan)
         self.ui.pushButton_disconn.clicked.connect(self.disconnect_from_remote)
         self.ui.pushButton_fetch_pkt.clicked.connect(self.process_captured_file)
+
+#        ip_patten = QtCore.QRegExp(r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
+#        valid = QtGui.QRegExpValidator(ip_patten, self.ui.lineEdit_ip)
+#        self.ui.lineEdit_ip.setValidator(valid)
     
     def process_captured_file(self):
         self.ui.pushButton_conn.setEnabled(False)
@@ -66,6 +72,20 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_scan.setEnabled(True)
         self.ui.pushButton_stop_scan.setEnabled(False)
         self.ui.pushButton_fetch_pkt.setEnabled(True)
+        #TODO pop up dialog to show the progress of generating the sniffer file
+        self.create_check_captured_file_task()
+
+    def create_check_captured_file_task(self):
+        self.print_log_to_mainwindow('正在生成抓包文件...')
+        self.work_thread_check_captured_file = CheckCapturedFileThread(self.mon_client)
+        self.work_thread_check_captured_file.done_trigger.connect(self.check_captured_file_ready)
+        self.work_thread_check_captured_file.start()
+
+    def check_captured_file_ready(self, msg):
+        if msg == 'done':
+            self.print_log_to_mainwindow('抓包文件已生成')
+        elif msg == 'timeout':
+            self.print_log_to_mainwindow('生成抓包文件超时')
 
     def create_start_scan_task(self):
         monitor_channel = self.ui.comboBox_ch.currentText()
@@ -119,6 +139,12 @@ class Logic(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, '警告', msg, QtWidgets.QMessageBox.Abort)
             self.ui.pushButton_conn.setEnabled(True)
             return 
+        elif valid == 'invalid_ip_format':
+            msg = 'IP地址格式不正确'
+            self.print_log_to_mainwindow(msg)
+            QtWidgets.QMessageBox.warning(self, '警告', msg, QtWidgets.QMessageBox.Abort)
+            self.ui.pushButton_conn.setEnabled(True)
+            return
 
         self.mon_client = monitor_client.MonClient(self.remote_ip, self.remote_un, self.remote_pw)
         try:
@@ -167,11 +193,15 @@ class Logic(QtWidgets.QMainWindow):
             self.ui.pushButton_scan.setEnabled(True)
             self.ui.comboBox_ch.setEnabled(True)
 
-
     def check_input_valid(self, ip, un, pw):
         #TODO
         if ip == '' or un == '' or pw == '':
             return 'text_blank'
+
+        ip_patten = r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+        res = re.search(ip_patten, ip)
+        if res == None:
+            return 'invalid_ip_format'
 
         return ''
     

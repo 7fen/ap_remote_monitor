@@ -7,6 +7,9 @@ import subprocess
 local_exec_file_path = 'remote_main.py'
 remote_exec_file_path = '/tmp/main.py'
 
+local_helper_file_path = 'remote_main.sh'
+remote_helper_file_path = '/tmp/main.sh'
+
 remote_store_file_path = '/tmp/packet_capture.pcapng'
 local_store_file_path = 'monitor'
 
@@ -23,7 +26,7 @@ class MonClient:
 
     def push_file(self, local_path, remote_path):
         self.shell.push(local_path, remote_path)
-        self.shell('chmod 777 ' + remote_exec_file_path)
+        self.shell('chmod 777 ' + remote_path)
     
     def pull_file(self, local_path, remote_path):
         self.shell.pull(local_path, remote_path)
@@ -44,6 +47,11 @@ class MonClient:
     def get_monitor_iface(self):
         cmd = r'echo -e "{}\n" | sudo -S {} get_monitor_iface'.format(self.s_password,
             remote_exec_file_path)
+        return self.exec_command(cmd)
+
+    def captured_file_gen_done(self):
+        cmd = r'echo -e "{}\n" | sudo -S {} check_capture_file {}'.format(self.s_password,
+            remote_helper_file_path, remote_store_file_path)
         return self.exec_command(cmd)
     
     def get_supported_channels(self):
@@ -100,10 +108,17 @@ class MonClient:
     
     def push_function_file_to_server(self):
         self.push_file(local_exec_file_path, remote_exec_file_path)
+        self.push_file(local_helper_file_path, remote_helper_file_path)
     
     def pull_captured_file_from_server(self):
         self.full_captured_file_path = local_store_file_path + '_ch{}.pcapng'.format(self.mon_chan)
         self.pull_file(self.full_captured_file_path, remote_store_file_path)
+
+    def check_captured_file(self):
+        output = self.captured_file_gen_done()
+        print(str(output))
+        return str(output)
+
 
 if __name__ == '__main__':
     print('mark 0')

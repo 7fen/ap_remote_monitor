@@ -133,11 +133,10 @@ def set_mon_channel(channel):
     command = 'iw dev ' + mon_iface + ' set channel ' + str(channel) + ' ' + bw
     os.system(command)
 
-def packet_handler(pkt):
-
-    writer = PcapWriter(store_file_path, append = True)
-    writer.write(pkt)
-    writer.close()
+#def packet_handler(pkt):
+#    writer = PcapWriter(store_file_path, append = True)
+#    writer.write(pkt)
+#    writer.close()
 
 def stop(signal, frame):
     global stop_flag
@@ -196,6 +195,7 @@ if __name__ == '__main__':
         set_mon_channel(int(channel)) 
     elif action == 'start_scan':
         os.system('rm -f ' + store_file_path)
-        sniff(iface=mon_iface, prn=packet_handler, store=False, stop_filter=get_stop_flag)
+        cap = sniff(iface=mon_iface, store=True, stop_filter=get_stop_flag)
+        wrpcap(store_file_path, cap)
 
 
