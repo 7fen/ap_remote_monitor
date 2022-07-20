@@ -15,14 +15,14 @@ local_store_file_path = 'monitor'
 
 class MonClient:
     search_dirs = ['Program Files', 'Program Files (x86)']
-    sniff_program_name = 'Wireshark.exe'
+    windows_program = {'wireshark': 'wireshark.exe', 'excel': 'excel.exe'}
 
     def __init__(self, ip_address, username, password):
         self.s_ip_address = ip_address
         self.s_username = username
         self.s_password = password
         self.sniff_program_path = ''
-#        self.locate_capture_program()
+        self.windows_program_path = {}
 
     def push_file(self, local_path, remote_path):
         self.shell.push(local_path, remote_path)
@@ -87,24 +87,28 @@ class MonClient:
     def test_cmd(self, cmd):
         return self.exec_command(cmd)
 
-    def search_sniffer_program(self):
+    def search_windows_program(self):
         for disk in psutil.disk_partitions():
             for dir in self.search_dirs:
                 search_path = disk[0] + dir
-                search_cmd = 'where /R "{}" {}'.format(search_path, self.sniff_program_name)
-                print('search cmd:', search_cmd)
-                proc = subprocess.run(search_cmd, capture_output=True)
-                if proc.returncode == 0:
-                    self.sniffer_program_path = proc.stdout.decode().strip()
-                    return
+                for name, exec_name in self.windows_program.items():
+                    search_cmd = 'where /R "{}" {}'.format(search_path, exec_name)
+                    print('search cmd:', search_cmd)
+                    proc = subprocess.run(search_cmd, capture_output=True)
+                    if proc.returncode == 0:
+                        self.windows_program_path[name] = proc.stdout.decode().strip()
+                        continue
 
-    def open_sniffer_program(self):
-        cmd = self.sniffer_program_path + ' ' + self.full_captured_file_path
+    def get_windows_program_path(self):
+        return self.windows_program_path
+
+    def open_sniffer_file(self):
+        cmd = self.windows_program_path['wireshark'] + ' ' + self.full_captured_file_path
         print('cmd', cmd)
         subprocess.Popen(cmd)
     
     def get_sniffer_program_path(self):
-        return self.sniffer_program_path
+        return self.windows_program_path['wireshark']
     
     def push_function_file_to_server(self):
         self.push_file(local_exec_file_path, remote_exec_file_path)
@@ -116,8 +120,11 @@ class MonClient:
 
     def check_captured_file(self):
         output = self.captured_file_gen_done()
-        print(str(output))
-        return str(output)
+        output = str(output)
+        print(output)
+        if output == 'done':
+            self.pull_captured_file_from_server()
+        return output
 
 
 if __name__ == '__main__':

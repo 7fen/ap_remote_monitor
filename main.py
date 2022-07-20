@@ -3,7 +3,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import monitor_client
 import progress
 
-from work_thread import FindSnifferThread, SetupScanEnvThread, StartScanThread, PullCapturedFileThread, CheckCapturedFileThread
+from work_thread import FindWindowsUtilsThread, SetupScanEnvThread, StartScanThread, CheckCapturedFileThread
 import ui.Ui_ap_remote_monitor
 import sys, os, time, subprocess, re
 from datetime import datetime
@@ -29,7 +29,7 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_scan.clicked.connect(self.start_scan)
         self.ui.pushButton_stop_scan.clicked.connect(self.stop_scan)
         self.ui.pushButton_disconn.clicked.connect(self.disconnect_from_remote)
-        self.ui.pushButton_fetch_pkt.clicked.connect(self.process_captured_file)
+        self.ui.pushButton_fetch_pkt.clicked.connect(self.open_sniffer_file)
         self.ui.pushButton_clr_log.clicked.connect(self.clear_log)
 
         self.progress = progress.LoadingProgress()
@@ -38,15 +38,6 @@ class Logic(QtWidgets.QMainWindow):
 #        self.ui.lineEdit_ip.setValidator(valid)
     def clear_log(self):
         self.ui.textBrowser.clear()
-    
-    def process_captured_file(self):
-        self.ui.pushButton_conn.setEnabled(False)
-        self.ui.pushButton_disconn.setEnabled(False)
-        self.ui.pushButton_scan.setEnabled(False)
-        self.ui.pushButton_stop_scan.setEnabled(False)
-        self.ui.pushButton_fetch_pkt.setEnabled(False)
-        self.ui.comboBox_ch.setEnabled(False)
-        self.create_pull_captured_file_task()
     
     def disconnect_from_remote(self):
         self.ui.pushButton_disconn.setEnabled(False)
@@ -99,32 +90,28 @@ class Logic(QtWidgets.QMainWindow):
         self.work_thread_start_scan = StartScanThread(self.mon_client)
         self.work_thread_start_scan.start()
 
-    def create_scan_sniffer_task(self):
-        self.work_thread_find_sniffer = FindSnifferThread(self.mon_client)
-        self.work_thread_find_sniffer.done_trigger.connect(self.get_sniffer_path_done)
-        self.work_thread_find_sniffer.start()
+    def create_scan_windows_program_task(self):
+        self.work_thread_find_windows_program = FindWindowsUtilsThread(self.mon_client)
+        self.work_thread_find_windows_program.done_trigger.connect(self.get_windows_program_path_done)
+        self.work_thread_find_windows_program.start()
     
-    def create_pull_captured_file_task(self):
-        self.work_thread_pull_captured_file = PullCapturedFileThread(self.mon_client)
-        self.work_thread_pull_captured_file.done_trigger.connect(self.get_captured_file_done)
-        self.work_thread_pull_captured_file.start()
-    
-    def get_captured_file_done(self):
+    def open_sniffer_file(self):
         if self.sniffer_program_path:
-            self.mon_client.open_sniffer_program()
+            self.mon_client.open_sniffer_file()
         else:
             #TODO
             pass
-        
-        self.ui.pushButton_disconn.setEnabled(True)
-        self.ui.pushButton_scan.setEnabled(True)
-        self.ui.pushButton_fetch_pkt.setEnabled(True)
-        self.ui.comboBox_ch.setEnabled(True)
     
-    def get_sniffer_path_done(self, path):
-        if path:
+    def get_windows_program_path_done(self, path):
+        wireshark_path = path.get('wireshark')
+        if wireshark_path:
             self.sniffer_program_path = path
-            self.print_log_to_mainwindow('侦测到Wireshark安装路径: ' + path)
+            self.print_log_to_mainwindow('侦测到Wireshark安装路径: ' + wireshark_path)
+
+        excel_path = path.get('excel')
+        if excel_path:
+            self.table_program_path = path
+            self.print_log_to_mainwindow('侦测到Excel安装路径: ' + excel_path)
     
     def print_log_to_mainwindow(self, msg):
         current_datetime = self.get_current_datetime()
@@ -160,7 +147,7 @@ class Logic(QtWidgets.QMainWindow):
             self.ui.pushButton_conn.setEnabled(True)
             return
 
-        self.create_scan_sniffer_task()
+        self.create_scan_windows_program_task()
         self.create_setup_scan_env_task() 
         msg = '已成功连接到远程主机'
         self.print_log_to_mainwindow(msg)

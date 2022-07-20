@@ -1,16 +1,16 @@
 from PyQt5.QtCore import QThread, pyqtSignal
 #from monitor_client import MonClient
 
-class FindSnifferThread(QThread):
-    done_trigger = pyqtSignal(str)
+class FindWindowsUtilsThread(QThread):
+    done_trigger = pyqtSignal(dict)
 
     def __init__(self, mon_client_ins):
         super().__init__()
         self.mon_client = mon_client_ins
 
     def run(self):
-        self.mon_client.search_sniffer_program()
-        path = self.mon_client.get_sniffer_program_path()
+        self.mon_client.search_windows_program()
+        path = self.mon_client.get_windows_program_path()
         self.done_trigger.emit(path)
 
 class StartScanThread(QThread):
@@ -31,16 +31,6 @@ class CheckCapturedFileThread(QThread):
     def run(self):
         res = self.mon_client.check_captured_file()
         self.done_trigger.emit(res)
-
-class PullCapturedFileThread(QThread):
-    done_trigger = pyqtSignal()
-    def __init__(self, mon_client_ins):
-        super().__init__()
-        self.mon_client = mon_client_ins
-    
-    def run(self):
-        self.mon_client.pull_captured_file_from_server()
-        self.done_trigger.emit()
 
 class SetupScanEnvThread(QThread):
     done_trigger = pyqtSignal(str)
