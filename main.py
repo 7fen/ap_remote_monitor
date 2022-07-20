@@ -17,7 +17,8 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
 
     #my logic
-        self.setWindowFlags(QtCore.Qt.WindowCloseButtonHint)
+        self.setWindowFlags(QtCore.Qt.WindowCloseButtonHint | QtCore.Qt.WindowMinimizeButtonHint)
+        self.setFixedSize(self.width(), self.height())
         self.ui.lineEdit_pw.setEchoMode(QtWidgets.QLineEdit.Password)
         self.ui.pushButton_disconn.setEnabled(False)
         self.ui.pushButton_scan.setEnabled(False)
@@ -29,11 +30,14 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_stop_scan.clicked.connect(self.stop_scan)
         self.ui.pushButton_disconn.clicked.connect(self.disconnect_from_remote)
         self.ui.pushButton_fetch_pkt.clicked.connect(self.process_captured_file)
+        self.ui.pushButton_clr_log.clicked.connect(self.clear_log)
 
         self.progress = progress.LoadingProgress()
 #        ip_patten = QtCore.QRegExp(r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
 #        valid = QtGui.QRegExpValidator(ip_patten, self.ui.lineEdit_ip)
 #        self.ui.lineEdit_ip.setValidator(valid)
+    def clear_log(self):
+        self.ui.textBrowser.clear()
     
     def process_captured_file(self):
         self.ui.pushButton_conn.setEnabled(False)
