@@ -1,15 +1,12 @@
-from multiprocessing.dummy import current_process
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 import monitor_client
+import progress
+
 from work_thread import FindSnifferThread, SetupScanEnvThread, StartScanThread, PullCapturedFileThread, CheckCapturedFileThread
 import ui.Ui_ap_remote_monitor
-import sys
-import os
-import time
+import sys, os, time, subprocess, re
 from datetime import datetime
-import subprocess
-import re
 
 class Logic(QtWidgets.QMainWindow):
     sniffer_program_path = ''
@@ -33,6 +30,7 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_disconn.clicked.connect(self.disconnect_from_remote)
         self.ui.pushButton_fetch_pkt.clicked.connect(self.process_captured_file)
 
+        self.progress = progress.LoadingProgress()
 #        ip_patten = QtCore.QRegExp(r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
 #        valid = QtGui.QRegExpValidator(ip_patten, self.ui.lineEdit_ip)
 #        self.ui.lineEdit_ip.setValidator(valid)
@@ -73,6 +71,7 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_stop_scan.setEnabled(False)
         self.ui.pushButton_fetch_pkt.setEnabled(True)
         #TODO pop up dialog to show the progress of generating the sniffer file
+        self.progress.pop_start('正在生成文件...')
         self.create_check_captured_file_task()
 
     def create_check_captured_file_task(self):
@@ -82,6 +81,7 @@ class Logic(QtWidgets.QMainWindow):
         self.work_thread_check_captured_file.start()
 
     def check_captured_file_ready(self, msg):
+        self.progress.pop_stop()
         if msg == 'done':
             self.print_log_to_mainwindow('抓包文件已生成')
         elif msg == 'timeout':
