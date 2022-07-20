@@ -4,10 +4,10 @@ import time
 import psutil
 import subprocess
 
-local_exec_file_path = 'remote_main.py'
+local_exec_file_path = 'remote_helper/remote_main.py'
 remote_exec_file_path = '/tmp/main.py'
 
-local_helper_file_path = 'remote_main.sh'
+local_helper_file_path = 'remote_helper/remote_main.sh'
 remote_helper_file_path = '/tmp/main.sh'
 
 remote_store_file_path = '/tmp/packet_capture.pcapng'
