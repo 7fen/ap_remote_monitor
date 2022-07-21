@@ -97,6 +97,8 @@ class MonClient:
             for dir in self.search_dirs:
                 search_path = disk[0] + dir
                 for name, exec_name in self.windows_program.items():
+                    if self.windows_program_path.get(name):
+                        continue
                     search_cmd = 'where /R "{}" {}'.format(search_path, exec_name)
                     proc = subprocess.run(search_cmd, capture_output=True)
                     if proc.returncode == 0:

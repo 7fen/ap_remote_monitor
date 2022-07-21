@@ -62,6 +62,7 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_stop_scan.setEnabled(True)
         self.ui.pushButton_fetch_pkt.setEnabled(False)
         self.ui.pushButton_fetch_ap_info.setEnabled(False)
+        self.ap_info_file_exist = 0
         self.create_start_scan_task()
     
     def stop_scan(self):
@@ -110,14 +111,18 @@ class Logic(QtWidgets.QMainWindow):
         self.work_thread_gen_ap_info_file.done_trigger.connect(self.gen_ap_info_file_done)
         self.work_thread_gen_ap_info_file.start()
 
-    def gen_ap_info_file_done(self):
-        self.print_log_to_mainwindow('AP信息已生成, 存放在: ' + self.mon_client.get_full_ap_info_file_path())
-        self.progress.pop_stop()
+    def open_ap_info_file(self):
         if self.table_program_path:
             self.mon_client.open_ap_info_file()
         else:
             QtWidgets.QMessageBox.warning(self, '警告', '未检测到系统已安装Excel, 请手动打开文件',
                 QtWidgets.QMessageBox.Abort)
+
+    def gen_ap_info_file_done(self):
+        self.print_log_to_mainwindow('AP信息已生成, 存放在: ' + self.mon_client.get_full_ap_info_file_path())
+        self.progress.pop_stop()
+        self.ap_info_file_exist = 1
+        self.open_ap_info_file()
 
     def open_sniffer_file(self):
         if self.sniffer_program_path:
@@ -127,9 +132,12 @@ class Logic(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.Abort)
 
     def gen_ap_info_file(self):
-        self.print_log_to_mainwindow('正在分析AP信息...')
-        self.progress.pop_start('正在分析AP, 请耐心等待...')
-        self.create_gen_ap_info_file_task()
+        if self.ap_info_file_exist == 0:
+            self.print_log_to_mainwindow('正在分析AP信息...')
+            self.progress.pop_start('正在分析AP, 请耐心等待...')
+            self.create_gen_ap_info_file_task()
+        else:
+            self.open_ap_info_file()
 
     def get_windows_program_path_done(self, path):
         wireshark_path = path.get('wireshark')
