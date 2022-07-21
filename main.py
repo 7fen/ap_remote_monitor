@@ -3,13 +3,14 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import monitor_client
 import progress
 
-from work_thread import FindWindowsUtilsThread, SetupScanEnvThread, StartScanThread, CheckCapturedFileThread
+from work_thread import FindWindowsUtilsThread, SetupScanEnvThread, StartScanThread, CheckCapturedFileThread, GenApInfoFileThread
 import ui.Ui_ap_remote_monitor
 import sys, os, time, subprocess, re
 from datetime import datetime
 
 class Logic(QtWidgets.QMainWindow):
     sniffer_program_path = ''
+    table_program_path = ''
 
     def __init__(self):
         super().__init__()
@@ -24,12 +25,14 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_scan.setEnabled(False)
         self.ui.pushButton_stop_scan.setEnabled(False)
         self.ui.pushButton_fetch_pkt.setEnabled(False)
+        self.ui.pushButton_fetch_ap_info.setEnabled(False)
         self.ui.comboBox_ch.setEnabled(False)
         self.ui.pushButton_conn.clicked.connect(self.remote_login)
         self.ui.pushButton_scan.clicked.connect(self.start_scan)
         self.ui.pushButton_stop_scan.clicked.connect(self.stop_scan)
         self.ui.pushButton_disconn.clicked.connect(self.disconnect_from_remote)
         self.ui.pushButton_fetch_pkt.clicked.connect(self.open_sniffer_file)
+        self.ui.pushButton_fetch_ap_info.clicked.connect(self.gen_ap_info_file)
         self.ui.pushButton_clr_log.clicked.connect(self.clear_log)
 
         self.progress = progress.LoadingProgress()
@@ -44,6 +47,7 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_scan.setEnabled(False)
         self.ui.pushButton_stop_scan.setEnabled(False)
         self.ui.pushButton_fetch_pkt.setEnabled(False)
+        self.ui.pushButton_fetch_ap_info.setEnabled(False)
         self.ui.comboBox_ch.setEnabled(False)
 
         self.mon_client.stop_scan()
@@ -57,6 +61,7 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_scan.setEnabled(False)
         self.ui.pushButton_stop_scan.setEnabled(True)
         self.ui.pushButton_fetch_pkt.setEnabled(False)
+        self.ui.pushButton_fetch_ap_info.setEnabled(False)
         self.create_start_scan_task()
     
     def stop_scan(self):
@@ -65,12 +70,13 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_scan.setEnabled(True)
         self.ui.pushButton_stop_scan.setEnabled(False)
         self.ui.pushButton_fetch_pkt.setEnabled(True)
+        self.ui.pushButton_fetch_ap_info.setEnabled(True)
         #TODO pop up dialog to show the progress of generating the sniffer file
-        self.progress.pop_start('正在生成文件...')
+        self.progress.pop_start('正在生成报文...')
         self.create_check_captured_file_task()
 
     def create_check_captured_file_task(self):
-        self.print_log_to_mainwindow('正在生成抓包文件...')
+        self.print_log_to_mainwindow('正在生成报文...')
         self.work_thread_check_captured_file = CheckCapturedFileThread(self.mon_client)
         self.work_thread_check_captured_file.done_trigger.connect(self.check_captured_file_ready)
         self.work_thread_check_captured_file.start()
@@ -78,9 +84,13 @@ class Logic(QtWidgets.QMainWindow):
     def check_captured_file_ready(self, msg):
         self.progress.pop_stop()
         if msg == 'done':
-            self.print_log_to_mainwindow('抓包文件已生成')
+            self.print_log_to_mainwindow('报文已生成, 存放在: ' + self.mon_client.get_full_captured_file_path())
         elif msg == 'timeout':
-            self.print_log_to_mainwindow('生成抓包文件超时')
+            output = '生成报文超时'
+            self.print_log_to_mainwindow(output)
+            QtWidgets.QMessageBox.warning(self, '警告', output, QtWidgets.QMessageBox.Abort)
+            self.ui.pushButton_fetch_pkt.setEnabled(False)
+            self.ui.pushButton_fetch_ap_info.setEnabled(False)
 
     def create_start_scan_task(self):
         monitor_channel = self.ui.comboBox_ch.currentText()
@@ -95,13 +105,32 @@ class Logic(QtWidgets.QMainWindow):
         self.work_thread_find_windows_program.done_trigger.connect(self.get_windows_program_path_done)
         self.work_thread_find_windows_program.start()
     
+    def create_gen_ap_info_file_task(self):
+        self.work_thread_gen_ap_info_file = GenApInfoFileThread(self.mon_client)
+        self.work_thread_gen_ap_info_file.done_trigger.connect(self.gen_ap_info_file_done)
+        self.work_thread_gen_ap_info_file.start()
+
+    def gen_ap_info_file_done(self):
+        self.print_log_to_mainwindow('AP信息已生成, 存放在: ' + self.mon_client.get_full_ap_info_file_path())
+        self.progress.pop_stop()
+        if self.table_program_path:
+            self.mon_client.open_ap_info_file()
+        else:
+            QtWidgets.QMessageBox.warning(self, '警告', '未检测到系统已安装Excel, 请手动打开文件',
+                QtWidgets.QMessageBox.Abort)
+
     def open_sniffer_file(self):
         if self.sniffer_program_path:
             self.mon_client.open_sniffer_file()
         else:
-            #TODO
-            pass
-    
+            QtWidgets.QMessageBox.warning(self, '警告', '未检测到系统已安装Wireshark, 请手动打开文件',
+                QtWidgets.QMessageBox.Abort)
+
+    def gen_ap_info_file(self):
+        self.print_log_to_mainwindow('正在分析AP信息...')
+        self.progress.pop_start('正在分析AP, 请耐心等待...')
+        self.create_gen_ap_info_file_task()
+
     def get_windows_program_path_done(self, path):
         wireshark_path = path.get('wireshark')
         if wireshark_path:

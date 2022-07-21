@@ -22,6 +22,16 @@ class StartScanThread(QThread):
         self.mon_client.stop_scan()
         self.mon_client.start_scan()
 
+class GenApInfoFileThread(QThread):
+    done_trigger = pyqtSignal()
+    def __init__(self, mon_client_ins):
+        super().__init__()
+        self.mon_client = mon_client_ins
+
+    def run(self):
+        self.mon_client.gen_ap_info_file()
+        self.done_trigger.emit()
+
 class CheckCapturedFileThread(QThread):
     done_trigger = pyqtSignal(str)
     def __init__(self, mon_client_ins):
