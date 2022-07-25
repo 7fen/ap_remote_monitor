@@ -3,7 +3,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import monitor_client
 import progress
 
-from work_thread import FindWindowsUtilsThread, SetupScanEnvThread, StartScanThread, CheckCapturedFileThread, GenApInfoFileThread
+from work_thread import FindWindowsUtilsThread, SetupScanEnvThread, StartScanThread, \
+    CheckCapturedFileThread, GenApInfoFileThread, SetupRemoteConnectionThread
 import ui.Ui_ap_remote_monitor
 import sys, os, time, subprocess, re
 from datetime import datetime
@@ -175,21 +176,28 @@ class Logic(QtWidgets.QMainWindow):
             return
 
         self.mon_client = monitor_client.MonClient(self.remote_ip, self.remote_un, self.remote_pw)
-        try:
-            self.mon_client.connect_to_server()
-        except:
+        self.create_setup_remote_connection_task()
+
+    def create_setup_remote_connection_task(self):
+        self.progress.pop_start('正在尝试连接, 请耐心等待...')
+        self.work_thread_remote_connection = SetupRemoteConnectionThread(self.mon_client)
+        self.work_thread_remote_connection.done_trigger.connect(self.remote_connection_result)
+        self.work_thread_remote_connection.start()
+
+    def remote_connection_result(self, result):
+        self.progress.pop_stop()
+        if result == 'success':
+            self.create_scan_windows_program_task()
+            self.create_setup_scan_env_task()
+            msg = '已成功连接到远程主机, 正在配置WiFi扫描环境, 请耐心等待...'
+            self.print_log_to_mainwindow(msg)
+            QtWidgets.QMessageBox.information(self, '提示', msg, QtWidgets.QMessageBox.Ok)
+        elif result == 'fail':
             msg = '无法连接到远程主机'
             self.print_log_to_mainwindow(msg)
             QtWidgets.QMessageBox.warning(self, '警告', msg, QtWidgets.QMessageBox.Abort)
             self.ui.pushButton_conn.setEnabled(True)
             return
-
-        self.create_scan_windows_program_task()
-        self.create_setup_scan_env_task() 
-        msg = '已成功连接到远程主机'
-        self.print_log_to_mainwindow(msg)
-        QtWidgets.QMessageBox.information(self, '提示', msg, QtWidgets.QMessageBox.Ok)
-        #self.ui.pushButton_disconn.setEnabled(True)
     
     def create_setup_scan_env_task(self):
         self.work_thread_scan_env = SetupScanEnvThread(self.mon_client)
@@ -220,6 +228,9 @@ class Logic(QtWidgets.QMainWindow):
             self.ui.pushButton_disconn.setEnabled(True)
             self.ui.pushButton_scan.setEnabled(True)
             self.ui.comboBox_ch.setEnabled(True)
+            msg = 'WiFi扫描环境配置完成'
+            self.print_log_to_mainwindow(msg)
+            QtWidgets.QMessageBox.information(self, '提示', msg, QtWidgets.QMessageBox.Ok)
 
     def check_input_valid(self, ip, un, pw):
         #TODO

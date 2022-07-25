@@ -14,13 +14,13 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.resize(268, 159)
+        Form.resize(311, 185)
         self.label_gif = QtWidgets.QLabel(Form)
-        self.label_gif.setGeometry(QtCore.QRect(1, 1, 271, 101))
+        self.label_gif.setGeometry(QtCore.QRect(1, 1, 311, 101))
         self.label_gif.setText("")
         self.label_gif.setObjectName("label_gif")
         self.label_prompt = QtWidgets.QLabel(Form)
-        self.label_prompt.setGeometry(QtCore.QRect(40, 110, 191, 31))
+        self.label_prompt.setGeometry(QtCore.QRect(10, 110, 291, 31))
         self.label_prompt.setText("")
         self.label_prompt.setObjectName("label_prompt")
 

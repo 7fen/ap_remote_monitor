@@ -1,5 +1,21 @@
 from PyQt5.QtCore import QThread, pyqtSignal
-#from monitor_client import MonClient
+
+class SetupRemoteConnectionThread(QThread):
+    done_trigger = pyqtSignal(str)
+
+    def __init__(self, mon_client_ins):
+        super().__init__()
+        self.mon_client = mon_client_ins
+
+    def run(self):
+        try:
+            self.mon_client.connect_to_server()
+        except:
+            msg = 'fail'
+        else:
+            msg = 'success'
+        finally:
+            self.done_trigger.emit(msg)
 
 class FindWindowsUtilsThread(QThread):
     done_trigger = pyqtSignal(dict)
