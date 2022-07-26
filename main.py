@@ -36,10 +36,19 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_fetch_ap_info.clicked.connect(self.gen_ap_info_file)
         self.ui.pushButton_clr_log.clicked.connect(self.clear_log)
 
+        self.status_label = QtWidgets.QLabel()
+        self.ui.statusbar.addPermanentWidget(self.status_label)
+        self.status_bar_timer = QtCore.QTimer(self)
+        self.status_bar_timer.timeout.connect(self.show_time_on_status_bar)
+        self.status_bar_timer.start()
+
         self.progress = progress.LoadingProgress()
-#        ip_patten = QtCore.QRegExp(r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
-#        valid = QtGui.QRegExpValidator(ip_patten, self.ui.lineEdit_ip)
-#        self.ui.lineEdit_ip.setValidator(valid)
+
+    def show_time_on_status_bar(self):
+        date_time = QtCore.QDateTime.currentDateTime()
+        text = date_time.toString('yyyy-MM-dd HH:mm:ss')
+        self.status_label.setText('当前时间: ' + text)
+
     def clear_log(self):
         self.ui.textBrowser.clear()
     
@@ -50,6 +59,7 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_fetch_pkt.setEnabled(False)
         self.ui.pushButton_fetch_ap_info.setEnabled(False)
         self.ui.comboBox_ch.setEnabled(False)
+        self.ui.statusbar.clearMessage()
 
         self.mon_client.stop_scan()
         time.sleep(1)
@@ -63,6 +73,7 @@ class Logic(QtWidgets.QMainWindow):
         self.ui.pushButton_stop_scan.setEnabled(True)
         self.ui.pushButton_fetch_pkt.setEnabled(False)
         self.ui.pushButton_fetch_ap_info.setEnabled(False)
+        self.ui.statusbar.clearMessage()
         self.ap_info_file_exist = 0
         self.create_start_scan_task()
     
@@ -87,6 +98,8 @@ class Logic(QtWidgets.QMainWindow):
         self.progress.pop_stop()
         if msg == 'done':
             self.print_log_to_mainwindow('报文已生成, 存放在: ' + self.mon_client.get_full_captured_file_path())
+            captured_file_size = os.path.getsize(self.mon_client.get_full_captured_file_path())
+            self.ui.statusbar.showMessage('报文大小: ' + str(captured_file_size) + ' bytes', 0)
         elif msg == 'timeout':
             output = '生成报文超时'
             self.print_log_to_mainwindow(output)
