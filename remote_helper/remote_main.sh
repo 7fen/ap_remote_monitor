@@ -16,7 +16,7 @@ check_capture_file_function()
             return
         fi
 
-        if [ ! -e $file_name ]; then
+        if [ ! -e $file_path ]; then
             sleep 1
             continue
         fi
@@ -26,7 +26,7 @@ check_capture_file_function()
         if [ $file_size -ne $current_file_size ]; then
             match_cnt=0
             file_size=$current_file_size
-            sleep 0.5
+            sleep 1
             continue
         fi
 
